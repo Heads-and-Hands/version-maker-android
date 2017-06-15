@@ -70,11 +70,6 @@ class VersionMakerPlugin implements Plugin<Project> {
             return
         }
 
-        for (File f : files) {
-            println("file: " + f.absolutePath)
-        }
-
-
         Task task = project.task("prepareLauncherIconsFor${variant.name.capitalize()}", type: BuildTypeLauncherIconTask) {
             sources = files
             outputDir = outputDirectory
