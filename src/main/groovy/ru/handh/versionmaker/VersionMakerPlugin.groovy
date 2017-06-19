@@ -158,7 +158,7 @@ class VersionMakerPlugin implements Plugin<Project> {
             if (versionName.empty) {
                 throw new Exception("Empty version name")
             }
-            return versionName
+            return versionName.replaceAll("'", "")
         }
         catch (ignored) {
             println 'Error getting release version name ' + ignored.localizedMessage
