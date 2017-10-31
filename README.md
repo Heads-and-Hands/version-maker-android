@@ -1,5 +1,6 @@
 # version-maker-android
-This Gradle plugin generates versionName, versionCode and adds version badge to launcher icon for Android application based on meta information from git repository and current build settings
+This Gradle plugin generates versionName, versionCode and adds version badge to launcher icon for Android application 
+based on meta information from git repository and current build settings
 
 # Overview
 

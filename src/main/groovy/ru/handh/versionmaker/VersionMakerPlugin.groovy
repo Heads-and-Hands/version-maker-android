@@ -2,8 +2,6 @@ package ru.handh.versionmaker
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.file.FileCollection
 
 /**
  *  Created by Igor Glushkov on 28.04.17.
@@ -19,80 +17,164 @@ class VersionMakerPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
 
-        project.afterEvaluate() {
-            if (it.hasProperty("android")) {
-                project.android.applicationVariants.all { variant ->
-                    generateVersionName(project, variant)
-                    generateLauncherIcon(project, variant)
+        Integer generatedCode
+        String generatedName
+
+        // gradle 4.2.1
+        project.android.applicationVariants.all { variant ->
+            variant.outputs.all { output ->
+                output.processManifest.doLast {
+
+                    println "class: " + output.class.canonicalName
+                    println "name: " + (String) output.getName()
+                    println "build type: " + (String) variant.buildType.name
+                    println "flavor name: " + (String) variant.flavorName
+
+                    generatedCode = getNewVersionCode()
+                    generatedName = getNewVersionName(variant)
+
+                    println "versionCode: " + generatedCode
+                    println "versionName: " + generatedName
+
+                    // Stores the path to the maifest.
+                    String manifestPath = "$manifestOutputDirectory/AndroidManifest.xml"
+                    // Stores the contents of the manifest.
+                    def manifestContent = new File(manifestPath).getText()
+
+                    // Changes the version code in the stored text.
+                    manifestContent = manifestContent.replace('android:versionCode="1"',
+                            String.format('android:versionCode="%s"', generatedCode))
+
+                    manifestContent = manifestContent.replace('android:versionName="1.0"',
+                            String.format('android:versionName="%s"', generatedName))
+
+                    // Overwrites the manifest with the new text.
+                    new File(manifestPath).write(manifestContent)
                 }
-            } else {
-                throw new IllegalStateException("'android' plugin required.")
             }
         }
+
+//        project.afterEvaluate() {
+//            if (it.hasProperty("android")) {
+//
+//                project.android.applicationVariants.all { variant ->
+//                    //generateVersionName(project, variant)
+//                    //generateLauncherIcon(project, variant)
+//                }
+//            } else {
+//                throw new IllegalStateException("'android' plugin required.")
+//            }
+//        }
     }
 
-    @SuppressWarnings("GrUnresolvedAccess")
-    void generateLauncherIcon(Project project, variant) {
+//    @Deprecated in gradle 4.2.1
+//    @SuppressWarnings("GrUnresolvedAccess")
+//    void generateLauncherIcon(Project project, variant) {
+//
+//        //не модицицируем иконку для релизных билдов
+//        def buildTypeName = variant.buildType.name
+//        if (buildTypeName == BUILD_TYPE_RELEASE) {
+//            return
+//        }
+//
+//        def outputDirectory = project.file("$project.buildDir/generated/res/$variant.name/launcher_icons/")
+//
+//        // add new resource folder to sourceSet with the highest priority
+//        // this makes sure the new icons will override the original one
+//        variant.sourceSets.get(variant.sourceSets.size() - 1).res.srcDirs += outputDirectory
+//
+//        def lines = []
+//        lines.push(variant.flavorName + " " + variant.buildType.name)
+//        lines.push(variant.versionName)
+//        lines.push(String.valueOf(variant.versionCode))
+//
+//        FileCollection files = project.files()
+//        variant.sourceSets.each { sourceSet ->
+//            List<File> icons = new ArrayList<>()
+//            for (File f : sourceSet.res.srcDirs) {
+//                //noinspection GroovyAssignabilityCheck
+//                searchIcons(/**config,*/
+//                        icons, f)
+//            }
+//            files = files + project.files(icons)
+//        }
+//
+//        if (files.empty) {
+//            //noinspection GroovyConstantConditional
+//            String source = /**config.mipmap*/
+//                    true ? "mipmap" : "drawable"
+//            println("WARNING: launcher file not found: ic_launcher.png in $source folders")
+//            return
+//        }
+//
+//        Task task = project.task("prepareLauncherIconsFor${variant.name.capitalize()}", type: BuildTypeLauncherIconTask) {
+//            sources = files
+//            outputDir = outputDirectory
+//            isMipmap = true
+//            launcherName = /**config.ic_launcher*/
+//                    "ic_launcher.png"
+//            buildType = variant.name
+//            versionName = variant.versionName
+//            versionCode = variant.versionCode
+//        }
+//
+//        // register task to make it run before resource merging
+//        // add dummy folder because the folder is already added to an sourceSet
+//        // when using the folder defined in the argument the generated resources are at the lowest priority
+//        // and will cause an conflict with the existing once
+//        variant.registerResGeneratingTask(task, new File(outputDirectory, "_dummy"))
+//    }
 
-        //не модицицируем иконку для релизных билдов
-        def buildTypeName = variant.buildType.name
-        if (buildTypeName == BUILD_TYPE_RELEASE) {
-            return
-        }
+//    @Deprecated
+//    static void generateVersionName(Project project, variant) {
+//
+//        //ИМЯ И НОМЕР ВЕРСИИ
+//        def versionCode = getNewVersionCode()
+//        def versionName
+//
+//        if (variant.buildType.name == BUILD_TYPE_RELEASE) {
+//            versionName = getReleaseVersionName()
+//        } else if (variant.buildType.name == BUILD_TYPE_BETA) {
+//            versionName = getBetaVersionName()
+//        } else if (variant.buildType.name == BUILD_TYPE_INTERNAL) {
+//            versionName = getDevelopVersionName() + "-internal"
+//        } else {
+//            versionName = getDevelopVersionName() + "-debug"
+//        }
+//
+//        println "new versionName " + versionName
+//        println "new versioncode " + versionCode
+//
+//        variant.mergedFlavor.versionCode = versionCode
+//        variant.mergedFlavor.versionName = versionName
+//    }
 
-        def outputDirectory = project.file("$project.buildDir/generated/res/$variant.name/launcher_icons/")
+//    void searchIcons(List<File> temp, File dir) {
+//        if (!dir.exists()) {
+//            return
+//        }
+//        if (dir.isFile()) {
+//            boolean nameCorrect = dir.absolutePath.endsWith(/**config.ic_launcher*/
+//                    "ic_launcher.png")
+//            //noinspection GroovyConstantConditional
+//            boolean typeCorrect = dir.absolutePath.contains(/**config.mipmap*/
+//                    true ? "mipmap" : "drawable")
+//            if (nameCorrect && typeCorrect) {
+//                temp.add(dir)
+//            }
+//            return
+//        }
+//        List<File> files = dir.listFiles()
+//        if (files == null) {
+//            return
+//        }
+//        for (File f : files) {
+//            searchIcons(/**config, */
+//                    temp, f)
+//        }
+//    }
 
-        // add new resource folder to sourceSet with the highest priority
-        // this makes sure the new icons will override the original one
-        variant.sourceSets.get(variant.sourceSets.size() - 1).res.srcDirs += outputDirectory
-
-        def lines = []
-        lines.push(variant.flavorName + " " + variant.buildType.name)
-        lines.push(variant.versionName)
-        lines.push(String.valueOf(variant.versionCode))
-
-        FileCollection files = project.files()
-        variant.sourceSets.each { sourceSet ->
-            List<File> icons = new ArrayList<>()
-            for (File f : sourceSet.res.srcDirs) {
-                //noinspection GroovyAssignabilityCheck
-                searchIcons(/**config,*/
-                        icons, f)
-            }
-            files = files + project.files(icons)
-        }
-
-        if (files.empty) {
-            //noinspection GroovyConstantConditional
-            String source = /**config.mipmap*/
-                    true ? "mipmap" : "drawable"
-            println("WARNING: launcher file not found: ic_launcher.png in $source folders")
-            return
-        }
-
-        Task task = project.task("prepareLauncherIconsFor${variant.name.capitalize()}", type: BuildTypeLauncherIconTask) {
-            sources = files
-            outputDir = outputDirectory
-            isMipmap = true
-            launcherName = /**config.ic_launcher*/
-                    "ic_launcher.png"
-            buildType = variant.name
-            versionName = variant.versionName
-            versionCode = variant.versionCode
-        }
-
-        // register task to make it run before resource merging
-        // add dummy folder because the folder is already added to an sourceSet
-        // when using the folder defined in the argument the generated resources are at the lowest priority
-        // and will cause an conflict with the existing once
-        variant.registerResGeneratingTask(task, new File(outputDirectory, "_dummy"))
-    }
-
-    static void generateVersionName(Project project, variant) {
-        def log = project.logger
-
-        //ИМЯ И НОМЕР ВЕРСИИ
-        def versionCode = getNewVersionCode()
+    static def getNewVersionName(variant) {
         def versionName
 
         if (variant.buildType.name == BUILD_TYPE_RELEASE) {
@@ -105,40 +187,11 @@ class VersionMakerPlugin implements Plugin<Project> {
             versionName = getDevelopVersionName() + "-debug"
         }
 
-        log.info "new versionName " + versionName
-        log.info "new versioncode " + versionCode
-
-        variant.mergedFlavor.versionCode = versionCode
-        variant.mergedFlavor.versionName = versionName
-    }
-
-    void searchIcons(List<File> temp, File dir) {
-        if (!dir.exists()) {
-            return
-        }
-        if (dir.isFile()) {
-            boolean nameCorrect = dir.absolutePath.endsWith(/**config.ic_launcher*/
-                    "ic_launcher.png")
-            //noinspection GroovyConstantConditional
-            boolean typeCorrect = dir.absolutePath.contains(/**config.mipmap*/
-                    true ? "mipmap" : "drawable")
-            if (nameCorrect && typeCorrect) {
-                temp.add(dir)
-            }
-            return
-        }
-        List<File> files = dir.listFiles()
-        if (files == null) {
-            return
-        }
-        for (File f : files) {
-            searchIcons(/**config, */
-                    temp, f)
-        }
+        return versionName
     }
 
 
-    static def getNewVersionCode() {
+    static Integer getNewVersionCode() {
         try {
             def versionCode = "git rev-list --count HEAD".execute().text.trim()
             def result = Integer.parseInt(versionCode)

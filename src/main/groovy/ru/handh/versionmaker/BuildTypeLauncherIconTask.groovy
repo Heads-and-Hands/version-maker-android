@@ -51,6 +51,8 @@ class BuildTypeLauncherIconTask extends DefaultTask {
     @TaskAction
     def generateDrawables(IncrementalTaskInputs inputs) {
 
+        println("generateDrawables")
+
         clazz = getClass()
 
         for (File it : sources) {
