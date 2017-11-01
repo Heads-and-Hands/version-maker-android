@@ -33,3 +33,8 @@ Plugin generates a launcher icon for all build types except release:
 # Installation
 
 https://plugins.gradle.org/plugin/ru.handh.versionmaker
+
+defaultConfig {
+        versionName versionMaker.name()
+        versionCode versionMaker.code()    
+    }
