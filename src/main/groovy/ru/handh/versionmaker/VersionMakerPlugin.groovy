@@ -17,7 +17,7 @@ class VersionMakerPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
 
-        project.extensions.create("versionMaker", TestExtension, project)
+        project.extensions.create("versionMaker", AndroidGitVersionExtension, project)
 
 //        project.afterEvaluate() {
 //            if (it.hasProperty("android")) {
