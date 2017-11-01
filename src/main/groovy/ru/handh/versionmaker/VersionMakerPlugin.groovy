@@ -17,42 +17,7 @@ class VersionMakerPlugin implements Plugin<Project> {
     @Override
     void apply(Project project) {
 
-        Integer generatedCode
-        String generatedName
-
-        // gradle 4.2.1
-        project.android.applicationVariants.all { variant ->
-            variant.outputs.all { output ->
-                output.processManifest.doLast {
-
-                    println "class: " + output.class.canonicalName
-                    println "name: " + (String) output.getName()
-                    println "build type: " + (String) variant.buildType.name
-                    println "flavor name: " + (String) variant.flavorName
-
-                    generatedCode = getNewVersionCode()
-                    generatedName = getNewVersionName(variant)
-
-                    println "versionCode: " + generatedCode
-                    println "versionName: " + generatedName
-
-                    // Stores the path to the maifest.
-                    String manifestPath = "$manifestOutputDirectory/AndroidManifest.xml"
-                    // Stores the contents of the manifest.
-                    def manifestContent = new File(manifestPath).getText()
-
-                    // Changes the version code in the stored text.
-                    manifestContent = manifestContent.replace('android:versionCode="1"',
-                            String.format('android:versionCode="%s"', generatedCode))
-
-                    manifestContent = manifestContent.replace('android:versionName="1.0"',
-                            String.format('android:versionName="%s"', generatedName))
-
-                    // Overwrites the manifest with the new text.
-                    new File(manifestPath).write(manifestContent)
-                }
-            }
-        }
+        project.extensions.create("versionMaker", TestExtension, project)
 
 //        project.afterEvaluate() {
 //            if (it.hasProperty("android")) {
@@ -174,86 +139,86 @@ class VersionMakerPlugin implements Plugin<Project> {
 //        }
 //    }
 
-    static def getNewVersionName(variant) {
-        def versionName
-
-        if (variant.buildType.name == BUILD_TYPE_RELEASE) {
-            versionName = getReleaseVersionName()
-        } else if (variant.buildType.name == BUILD_TYPE_BETA) {
-            versionName = getBetaVersionName()
-        } else if (variant.buildType.name == BUILD_TYPE_INTERNAL) {
-            versionName = getDevelopVersionName() + "-internal"
-        } else {
-            versionName = getDevelopVersionName() + "-debug"
-        }
-
-        return versionName
-    }
-
-
-    static Integer getNewVersionCode() {
-        try {
-            def versionCode = "git rev-list --count HEAD".execute().text.trim()
-            def result = Integer.parseInt(versionCode)
-            return result
-        }
-        catch (ignored) {
-            println "Error getting version code " + ignored.getLocalizedMessage()
-            return -1
-        }
-    }
-
-    /**версия берется из тега */
-    static def getReleaseVersionName() {
-        try {
-            def versionName = "git for-each-ref --count 1 --sort=-taggerdate --format '%(tag)' refs/tags"
-                    .execute().text.trim()
-            if (versionName.empty) {
-                throw new Exception("Empty version name")
-            }
-            return versionName.replaceAll("'", "")
-        }
-        catch (ignored) {
-            println 'Error getting release version name ' + ignored.localizedMessage
-            return "0.0.0"
-        }
-    }
-
-    /** версия берется из названия релиз ветки + счетчик комммитов в данной ветке*/
-    static def getBetaVersionName() {
-        try {
-
-            def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
-
-            //если мы находимся в релизной ветке, то можем посчитать номер беты на основе кол-ва коммитов. Если же мы
-            //по каким-то причинам собираем бету не из релизной версии, то кинем ошибочный номер
-            if (branch.startsWith("release")) {
-                def command = "git rev-list --count " + branch + " ^develop"
-                def number = command.execute().text.trim()
-                def commitsNumber = Integer.parseInt(number) + 1
-                def versionName = branch.toString().replaceAll("release/", "") + "-beta" + commitsNumber
-                return versionName
-            } else {
-                return "Wrong beta version name"
-            }
-        }
-        catch (ignored) {
-            println 'Error getting beta version name ' + ignored.localizedMessage
-            return "1.0.0"
-        }
-    }
-
-    static def getDevelopVersionName() {
-        try {
-            String versionName = getReleaseVersionName()
-            String[] codes = versionName.split("\\.")
-            codes[2] = "0"
-            codes[1] = String.valueOf(Integer.parseInt(codes[1]) + 1)
-            return codes[0] + "." + codes[1] + "." + codes[2]
-        } catch (ignored) {
-            println "Error getting developer version name " + ignored.localizedMessage
-            return "1.0.0"
-        }
-    }
+//    static def getNewVersionName(variant) {
+//        def versionName
+//
+//        if (variant.buildType.name == BUILD_TYPE_RELEASE) {
+//            versionName = getReleaseVersionName()
+//        } else if (variant.buildType.name == BUILD_TYPE_BETA) {
+//            versionName = getBetaVersionName()
+//        } else if (variant.buildType.name == BUILD_TYPE_INTERNAL) {
+//            versionName = getDevelopVersionName() + "-internal"
+//        } else {
+//            versionName = getDevelopVersionName() + "-debug"
+//        }
+//
+//        return versionName
+//    }
+//
+//
+//    static Integer getNewVersionCode() {
+//        try {
+//            def versionCode = "git rev-list --count HEAD".execute().text.trim()
+//            def result = Integer.parseInt(versionCode)
+//            return result
+//        }
+//        catch (ignored) {
+//            println "Error getting version code " + ignored.getLocalizedMessage()
+//            return -1
+//        }
+//    }
+//
+//    /**версия берется из тега */
+//    static def getReleaseVersionName() {
+//        try {
+//            def versionName = "git for-each-ref --count 1 --sort=-taggerdate --format '%(tag)' refs/tags"
+//                    .execute().text.trim()
+//            if (versionName.empty) {
+//                throw new Exception("Empty version name")
+//            }
+//            return versionName.replaceAll("'", "")
+//        }
+//        catch (ignored) {
+//            println 'Error getting release version name ' + ignored.localizedMessage
+//            return "0.0.0"
+//        }
+//    }
+//
+//    /** версия берется из названия релиз ветки + счетчик комммитов в данной ветке*/
+//    static def getBetaVersionName() {
+//        try {
+//
+//            def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+//
+//            //если мы находимся в релизной ветке, то можем посчитать номер беты на основе кол-ва коммитов. Если же мы
+//            //по каким-то причинам собираем бету не из релизной версии, то кинем ошибочный номер
+//            if (branch.startsWith("release")) {
+//                def command = "git rev-list --count " + branch + " ^develop"
+//                def number = command.execute().text.trim()
+//                def commitsNumber = Integer.parseInt(number) + 1
+//                def versionName = branch.toString().replaceAll("release/", "") + "-beta" + commitsNumber
+//                return versionName
+//            } else {
+//                return "Wrong beta version name"
+//            }
+//        }
+//        catch (ignored) {
+//            println 'Error getting beta version name ' + ignored.localizedMessage
+//            return "1.0.0"
+//        }
+//    }
+//
+//    static def getDevelopVersionName() {
+//        try {
+//            String versionName = getReleaseVersionName()
+//            String[] codes = versionName.split("\\.")
+//            codes[2] = "0"
+//            codes[1] = String.valueOf(Integer.parseInt(codes[1]) + 1)
+//            return codes[0] + "." + codes[1] + "." + codes[2]
+//        } catch (ignored) {
+//            println "Error getting developer version name " + ignored.localizedMessage
+//            return "1.0.0"
+//        }
+//    }
 
 }
