@@ -14,6 +14,8 @@ class AndroidGitVersionExtension {
     Project project
     String buildTypeName
     String buildVariantName
+    Integer versionCode
+    String versionName
 
     AndroidGitVersionExtension(Project project) {
         this.project = project
@@ -54,15 +56,19 @@ class AndroidGitVersionExtension {
     }
 
     final String name() {
-        String name = getNewVersionName(buildTypeName)
-        println("versionName: " + name)
-        return name
+        if (versionName == null) {
+            versionName = getNewVersionName(buildTypeName)
+        }
+        //println("versionName: " + versionName)
+        return versionName
     }
 
-    static final int code() {
-        Integer code = getNewVersionCode()
-        println("versionCode: " + code)
-        return code
+    final int code() {
+        if (versionCode == null) {
+            versionCode = getNewVersionCode()
+        }
+        //println("versionCode: " + versionCode)
+        return versionCode
     }
 
     static String getNewVersionName(String buildType) {
@@ -72,7 +78,7 @@ class AndroidGitVersionExtension {
         if (buildType == null) {
             versionName = "0.0.1"
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_RELEASE) {
-            versionName = getReleaseVersionName()
+            versionName = getReleaseVersionNameFromReleaseBranch()
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_BETA) {
             versionName = getBetaVersionName()
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_INTERNAL) {
@@ -137,12 +143,29 @@ class AndroidGitVersionExtension {
         }
     }
 
+    static def getReleaseVersionNameFromReleaseBranch() {
+
+        try {
+            def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+            if (branch.startsWith("release")) {
+                def versionName = branch.toString().replaceAll("release/", "")
+                return versionName
+            } else {
+                return getReleaseVersionName()
+            }
+        }
+        catch (ignored) {
+            println 'Error getting release version name from release branch' + ignored.localizedMessage
+            return "1.0.0"
+        }
+
+    }
+
     static def getDevelopVersionName() {
         try {
             String versionName = getReleaseVersionName()
             String[] codes = versionName.split("\\.")
-            codes[2] = "0"
-            codes[1] = String.valueOf(Integer.parseInt(codes[1]) + 1)
+            codes[2] = String.valueOf(Integer.parseInt(codes[2]) + 1)
             return codes[0] + "." + codes[1] + "." + codes[2]
         } catch (ignored) {
             println "Error getting developer version name " + ignored.localizedMessage
