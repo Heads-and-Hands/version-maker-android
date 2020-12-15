@@ -23,12 +23,18 @@ class AndroidGitVersionExtension {
         Gradle gradle = project.getGradle()
 
         String tskReqStr = gradle.getStartParameter().getTaskRequests().toString()
-        println "task " + tskReqStr
+        println "Version maker task name: " + tskReqStr
 
         Pattern pattern
 
         if (tskReqStr.contains("assemble")) {
             pattern = Pattern.compile("assemble(.*?)("
+                    + VersionMakerPlugin.BUILD_TYPE_BETA + "|"
+                    + VersionMakerPlugin.BUILD_TYPE_DEBUG + "|"
+                    + VersionMakerPlugin.BUILD_TYPE_INTERNAL + "|"
+                    + VersionMakerPlugin.BUILD_TYPE_RELEASE + ")")
+        } else if (tskReqStr.contains("bundle")) {
+            pattern = Pattern.compile("bundle(.*?)("
                     + VersionMakerPlugin.BUILD_TYPE_BETA + "|"
                     + VersionMakerPlugin.BUILD_TYPE_DEBUG + "|"
                     + VersionMakerPlugin.BUILD_TYPE_INTERNAL + "|"
@@ -43,6 +49,7 @@ class AndroidGitVersionExtension {
             try {
                 buildTypeName = matcher.group(2).toLowerCase()
                 buildVariantName = matcher.group(0).replace("assemble", "")
+                buildVariantName = matcher.group(0).replace("bundle", "")
                 println("buildTypeName " + buildTypeName)
                 println("buildVariantName " + buildVariantName)
             } catch (IndexOutOfBoundsException ex) {
@@ -105,6 +112,7 @@ class AndroidGitVersionExtension {
 
     /**версия берется из тега */
     static def getReleaseVersionName() {
+        println('getReleaseVersionName')
         try {
             def versionName = "git for-each-ref --count 1 --sort=-taggerdate --format '%(tag)' refs/tags"
                     .execute().text.trim()
@@ -121,6 +129,7 @@ class AndroidGitVersionExtension {
 
     /** версия берется из названия релиз ветки + счетчик комммитов в данной ветке*/
     static def getBetaVersionName() {
+        println('getBetaVersionName')
         try {
 
             def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
@@ -144,10 +153,35 @@ class AndroidGitVersionExtension {
     }
 
     static def getReleaseVersionNameFromReleaseBranch() {
-
+        println('getReleaseVersionNameFromReleaseBranch')
         try {
             def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+
+            if (branch == "HEAD") {
+                branch = "git show -s --pretty=%d HEAD".execute().text.trim()
+                // (HEAD, origin/release/0.2.0) или (HEAD, origin/release/0.2.0, origin/develop)
+                println('branch name: ' + branch)
+                branch = branch.replaceAll("\\(", "")
+                branch = branch.replaceAll("\\)", "")
+                String[] parts = branch.split(",")
+
+                for (String part : parts) {
+                    if (part.contains("release")) {
+                        branch = part
+                        break
+                    }
+                }
+                parts = branch.split("/")
+
+                if (parts.length >= 2 && parts[parts.length - 2] == "release") {
+                    def versionName = parts[parts.length - 1]
+                    println 'versionName from head ' + versionName
+                    return versionName
+                }
+            }
+
             if (branch.startsWith("release")) {
+                println 'branch ' + branch
                 def versionName = branch.toString().replaceAll("release/", "")
                 return versionName
             } else {
@@ -162,6 +196,7 @@ class AndroidGitVersionExtension {
     }
 
     static def getDevelopVersionName() {
+        println('getDevelopVersionName')
         try {
             String versionName = getReleaseVersionName()
             String[] codes = versionName.split("\\.")

@@ -6,7 +6,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath "com.gradle.publish:plugin-publish-plugin:0.9.7"
+        classpath "com.gradle.publish:plugin-publish-plugin:0.12.0"
     }
 }
 
@@ -16,7 +16,7 @@ apply plugin: 'maven-publish'
 apply plugin: "com.gradle.plugin-publish"
 
 group 'ru.handh'
-version '1.1.5'
+version '1.1.11'
 
 repositories {
     mavenCentral()
