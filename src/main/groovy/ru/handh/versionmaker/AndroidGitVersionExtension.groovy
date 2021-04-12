@@ -79,6 +79,9 @@ class AndroidGitVersionExtension {
     }
 
     static String getNewVersionName(String buildType) {
+        def fetchProcess = "git fetch --all".execute()
+        fetchProcess.err.eachLine { line -> println 'ERROR: ' + line }
+        fetchProcess.waitFor()
 
         String versionName
 
