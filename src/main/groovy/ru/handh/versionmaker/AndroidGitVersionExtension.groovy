@@ -64,7 +64,7 @@ class AndroidGitVersionExtension {
 
     final String name() {
         if (versionName == null) {
-            versionName = getNewVersionName(buildTypeName)
+            versionName = getNewVersionName(buildTypeName, project.rootProject.projectDir)
         }
         //println("versionName: " + versionName)
         return versionName
@@ -72,14 +72,14 @@ class AndroidGitVersionExtension {
 
     final int code() {
         if (versionCode == null) {
-            versionCode = getNewVersionCode()
+            versionCode = getNewVersionCode(project.rootProject.projectDir)
         }
         //println("versionCode: " + versionCode)
         return versionCode
     }
 
-    static String getNewVersionName(String buildType) {
-        def fetchProcess = "git fetch --all".execute()
+    static String getNewVersionName(String buildType, File workingDir) {
+        def fetchProcess = "git fetch --all".execute([], workingDir)
         fetchProcess.err.eachLine { line -> println 'ERROR: ' + line }
         fetchProcess.waitFor()
 
@@ -88,9 +88,9 @@ class AndroidGitVersionExtension {
         if (buildType == null) {
             versionName = "0.0.1"
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_RELEASE) {
-            versionName = getReleaseVersionNameFromReleaseBranch()
+            versionName = getReleaseVersionNameFromReleaseBranch(workingDir)
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_BETA) {
-            versionName = getBetaVersionName()
+            versionName = getBetaVersionName(workingDir)
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_INTERNAL) {
             versionName = getDevelopVersionName() + "-internal"
         } else {
@@ -101,9 +101,9 @@ class AndroidGitVersionExtension {
     }
 
 
-    static def getNewVersionCode() {
+    static def getNewVersionCode(File workingDir) {
         try {
-            def versionCode = "git rev-list --count HEAD".execute().text.trim()
+            def versionCode = "git rev-list --count HEAD".execute([], workingDir).text.trim()
             def result = Integer.parseInt(versionCode)
             return result
         }
@@ -114,11 +114,11 @@ class AndroidGitVersionExtension {
     }
 
     /**версия берется из тега */
-    static def getReleaseVersionName() {
+    static def getReleaseVersionName(File workingDir) {
         println('getReleaseVersionName')
         try {
             def versionName = "git for-each-ref --count 1 --sort=-taggerdate --format '%(tag)' refs/tags"
-                    .execute().text.trim()
+                    .execute([], workingDir).text.trim()
             if (versionName.empty) {
                 throw new Exception("Empty version name")
             }
@@ -131,17 +131,17 @@ class AndroidGitVersionExtension {
     }
 
     /** версия берется из названия релиз ветки + счетчик комммитов в данной ветке*/
-    static def getBetaVersionName() {
+    static def getBetaVersionName(File workingDir) {
         println('getBetaVersionName')
         try {
 
-            def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+            def branch = "git rev-parse --abbrev-ref HEAD".execute([], workingDir).text.trim()
 
             //если мы находимся в релизной ветке, то можем посчитать номер беты на основе кол-ва коммитов. Если же мы
             //по каким-то причинам собираем бету не из релизной версии, то кинем ошибочный номер
             if (branch.startsWith("release")) {
                 def command = "git rev-list --count " + branch + " ^develop"
-                def number = command.execute().text.trim()
+                def number = command.execute([], workingDir).text.trim()
                 def commitsNumber = Integer.parseInt(number) + 1
                 def versionName = branch.toString().replaceAll("release/", "") + "-beta" + commitsNumber
                 return versionName
@@ -155,13 +155,13 @@ class AndroidGitVersionExtension {
         }
     }
 
-    static def getReleaseVersionNameFromReleaseBranch() {
+    static def getReleaseVersionNameFromReleaseBranch(File workingDir) {
         println('getReleaseVersionNameFromReleaseBranch')
         try {
-            def branch = "git rev-parse --abbrev-ref HEAD".execute().text.trim()
+            def branch = "git rev-parse --abbrev-ref HEAD".execute([], workingDir).text.trim()
 
             if (branch == "HEAD") {
-                branch = "git show -s --pretty=%d HEAD".execute().text.trim()
+                branch = "git show -s --pretty=%d HEAD".execute([], workingDir).text.trim()
                 // (HEAD, origin/release/0.2.0) или (HEAD, origin/release/0.2.0, origin/develop)
                 println('branch name: ' + branch)
                 branch = branch.replaceAll("\\(", "")
