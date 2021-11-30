@@ -92,9 +92,9 @@ class AndroidGitVersionExtension {
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_BETA) {
             versionName = getBetaVersionName(workingDir)
         } else if (buildType == VersionMakerPlugin.BUILD_TYPE_INTERNAL) {
-            versionName = getDevelopVersionName() + "-internal"
+            versionName = getDevelopVersionName(workingDir) + "-internal"
         } else {
-            versionName = getDevelopVersionName() + "-debug"
+            versionName = getDevelopVersionName(workingDir) + "-debug"
         }
 
         return versionName
@@ -198,10 +198,10 @@ class AndroidGitVersionExtension {
 
     }
 
-    static def getDevelopVersionName() {
+    static def getDevelopVersionName(File workingDir) {
         println('getDevelopVersionName')
         try {
-            String versionName = getReleaseVersionName()
+            String versionName = getReleaseVersionName(workingDir)
             String[] codes = versionName.split("\\.")
             codes[2] = String.valueOf(Integer.parseInt(codes[2]) + 1)
             return codes[0] + "." + codes[1] + "." + codes[2]
