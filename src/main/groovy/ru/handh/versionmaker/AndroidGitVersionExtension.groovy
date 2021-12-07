@@ -188,7 +188,7 @@ class AndroidGitVersionExtension {
                 def versionName = branch.toString().replaceAll("release/", "")
                 return versionName
             } else {
-                return getReleaseVersionName()
+                return getReleaseVersionName(workingDir)
             }
         }
         catch (ignored) {
